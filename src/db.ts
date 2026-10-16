@@ -24,6 +24,8 @@ export type Evidence = {
   fileName: string | null;
 };
 export type Deadline = { id: number; title: string; detail: string; date: string };
+export type AssessmentKind = 'PHQ9' | 'GAD7' | 'PCL5';
+export type Assessment = { id: number; kind: AssessmentKind; takenAt: number; answers: number[]; total: number };
 
 export const EVIDENCE_STATUSES: EvidenceStatus[] = ['Need', 'Requested', 'Have'];
 export const CONDITION_STATUSES: ConditionStatus[] = ['Planned', 'Filed', 'Service connected', 'Denied'];
@@ -56,12 +58,18 @@ export function migrate() {
       status TEXT NOT NULL DEFAULT 'Need', file_uri TEXT, file_name TEXT);
     CREATE TABLE IF NOT EXISTS deadlines (
       id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '', date TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS assessments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, taken_at INTEGER NOT NULL,
+      answers TEXT NOT NULL, total INTEGER NOT NULL);
   `);
 }
 
 // ---- meta ----
 export function getMeta(key: string): string | null {
   return db.getFirstSync<{ value: string }>('SELECT value FROM meta WHERE key = ?', key)?.value ?? null;
+}
+export function deleteMeta(key: string) {
+  db.runSync('DELETE FROM meta WHERE key = ?', key);
 }
 export function setMeta(key: string, value: string) {
   db.runSync('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', key, value);
@@ -92,7 +100,12 @@ export function loadAll() {
     )
     .map(e => ({ id: e.id, title: e.title, type: e.type, conditionId: e.condition_id, status: e.status, fileUri: e.file_uri, fileName: e.file_name }));
   const deadlines = db.getAllSync<Deadline>('SELECT * FROM deadlines ORDER BY date');
-  return { conditions, checkins, flares, evidence, deadlines };
+  const assessments = db
+    .getAllSync<{ id: number; kind: AssessmentKind; taken_at: number; answers: string; total: number }>(
+      'SELECT * FROM assessments ORDER BY taken_at DESC',
+    )
+    .map(a => ({ id: a.id, kind: a.kind, takenAt: a.taken_at, answers: JSON.parse(a.answers) as number[], total: a.total }));
+  return { conditions, checkins, flares, evidence, deadlines, assessments };
 }
 
 // ---- writes ----
@@ -151,9 +164,56 @@ export function deleteDeadline(id: number) {
   db.runSync('DELETE FROM deadlines WHERE id = ?', id);
 }
 
+export function addAssessment(kind: AssessmentKind, answers: number[], takenAt = Date.now()) {
+  const total = answers.reduce((a, b) => a + b, 0);
+  db.runSync('INSERT INTO assessments (kind, taken_at, answers, total) VALUES (?, ?, ?, ?)', kind, takenAt, JSON.stringify(answers), total);
+}
+export function deleteAssessment(id: number) {
+  db.runSync('DELETE FROM assessments WHERE id = ?', id);
+}
+
+// ---- backup and restore ----
+const BACKUP_TABLES = ['meta', 'conditions', 'checkins', 'severities', 'flares', 'evidence', 'deadlines', 'assessments'] as const;
+export const BACKUP_FORMAT = 'sitrep-backup';
+
+/** Every table as plain rows. Evidence files themselves aren't included, only their records. */
+export function exportBackup() {
+  const tables: Record<string, unknown[]> = {};
+  for (const t of BACKUP_TABLES) tables[t] = db.getAllSync(`SELECT * FROM ${t}`);
+  return { format: BACKUP_FORMAT, version: 1, exportedAt: new Date().toISOString(), tables };
+}
+
+/** Replace everything on this phone with a backup. Throws if the file isn't a SITREP backup. */
+export function importBackup(data: unknown) {
+  const b = data as { format?: string; version?: number; tables?: Record<string, Record<string, unknown>[]> };
+  if (!b || b.format !== BACKUP_FORMAT || b.version !== 1 || typeof b.tables !== 'object') {
+    throw new Error('This file is not a SITREP backup.');
+  }
+  db.withTransactionSync(() => {
+    eraseEverything();
+    // Parents before children so foreign keys resolve.
+    for (const t of BACKUP_TABLES) {
+      for (const row of b.tables![t] ?? []) {
+        const cols = Object.keys(row).filter(c => /^[a-z_]+$/.test(c));
+        if (!cols.length) continue;
+        const vals = cols.map(c => {
+          const v = row[c];
+          return v === null || typeof v === 'number' || typeof v === 'string' ? v : String(v);
+        });
+        // Evidence files don't travel with a backup, so drop links to files on the old phone.
+        if (t === 'evidence') {
+          const fi = cols.indexOf('file_uri');
+          if (fi >= 0) vals[fi] = null;
+        }
+        db.runSync(`INSERT INTO ${t} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`, vals as SQLite.SQLiteBindValue[]);
+      }
+    }
+  });
+}
+
 export function eraseEverything() {
   db.execSync(`
-    DELETE FROM severities; DELETE FROM checkins; DELETE FROM flares;
+    DELETE FROM assessments; DELETE FROM severities; DELETE FROM checkins; DELETE FROM flares;
     DELETE FROM evidence; DELETE FROM deadlines; DELETE FROM conditions; DELETE FROM meta;
   `);
 }
@@ -239,6 +299,16 @@ export function loadExampleData() {
       ['Knee brace prescription', 'Private medical', knee, 'Have'],
     ];
     for (const [title, type, cid, status] of ev) addEvidence({ title, type, conditionId: cid, status, fileUri: null, fileName: null });
+
+    // Example check-up history, every two weeks, trending slightly better.
+    const DAYMS = 86_400_000;
+    const now = Date.now();
+    [56, 42, 28, 14].forEach((ago, i) => {
+      const at = now - ago * DAYMS;
+      addAssessment('PHQ9', [2, 2, 3, 2, 1, 1, 2, 1, 0].map(v => Math.max(0, v - (i > 2 ? 1 : 0))), at);
+      addAssessment('GAD7', [2, 2, 2, 1, 2, 2, 1].map(v => Math.max(0, v - (i > 1 ? 1 : 0))), at);
+      addAssessment('PCL5', [3, 3, 2, 3, 3, 3, 2, 1, 2, 2, 3, 2, 3, 2, 3, 1, 3, 3, 2, 3].map(v => Math.max(0, v - (i > 2 ? 1 : 0))), at);
+    });
     setMeta('example', '1');
   });
 }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import Slider from '@react-native-community/slider';
+import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import * as db from '../db';
 import { addDays, dayKey, daysUntil, fmtFull, fmtLong, fromDayKey, hhmm, today } from '../dates';
@@ -8,12 +9,15 @@ import { daysLogged, streak, useStore, windowStart } from '../store';
 import { fonts, usePalette } from '../theme';
 import { useToast } from '../Toast';
 import { DateField } from '../DateField';
+import { INSTRUMENT_ORDER, INSTRUMENTS } from '../assessments';
+import { dueStatus } from './CheckupsScreen';
 import { Body, Button, Check, Choice, Field, Fine, H2, Header, Input, Mono, Panel, Row, Screen, Stats, Stepper, Chip, Strong } from '../ui';
 
 export default function TodayScreen() {
   const s = useStore();
   const p = usePalette();
   const toast = useToast();
+  const nav = useNavigation<{ navigate: (tab: string, params?: object) => void }>();
   const key = dayKey(today());
   const existing = s.checkins[key];
 
@@ -42,6 +46,7 @@ export default function TodayScreen() {
   };
 
   const flares30 = s.flares.filter(f => f.start >= windowStart()).length;
+  const dueCheckups = INSTRUMENT_ORDER.filter(k => dueStatus(k, s.assessments).due);
   const upcoming = s.deadlines.filter(d => daysUntil(fromDayKey(d.date)) >= 0);
 
   return (
@@ -60,6 +65,17 @@ export default function TodayScreen() {
           { value: String(flares30), label: 'flare-ups, 30 days' },
         ]}
       />
+
+      {dueCheckups.length > 0 && (
+        <Panel>
+          <Row style={{ justifyContent: 'space-between' }}>
+            <H2>Check-ups due</H2>
+            <Chip label={`${dueCheckups.length} due`} tone="warn" />
+          </Row>
+          <Body small muted>{dueCheckups.map(k => INSTRUMENTS[k].short).join(', ')}. A few minutes each, and they show your provider how you're trending.</Body>
+          <Button kind="ghost" label="Go to check-ups" onPress={() => nav.navigate('More', { screen: 'Checkups', initial: false })} />
+        </Panel>
+      )}
 
       <Panel>
         <Row style={{ justifyContent: 'space-between' }}>

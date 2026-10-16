@@ -13,14 +13,15 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fonts, Palette, usePalette } from './theme';
 
-export function Screen({ children }: { children: React.ReactNode }) {
+/** Scrolling page. Pass underHeader on screens that already have a navigation header above them. */
+export function Screen({ children, underHeader }: { children: React.ReactNode; underHeader?: boolean }) {
   const p = usePalette();
   const insets = useSafeAreaInsets();
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: p.bg }}
       contentContainerStyle={{
-        paddingTop: insets.top + 12,
+        paddingTop: underHeader ? 4 : insets.top + 12,
         paddingBottom: 32,
         paddingHorizontal: 16,
         gap: 16,

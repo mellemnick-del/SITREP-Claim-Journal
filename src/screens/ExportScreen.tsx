@@ -2,23 +2,21 @@ import React, { useState } from 'react';
 import { Text, View } from 'react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import { Directory, Paths } from 'expo-file-system';
 import * as db from '../db';
 import { addDays, dayKey, fmtFull, fmtMonthDay, fromDayKey, lastDays, today } from '../dates';
 import { conditionStats, daysLogged, useStore, WINDOW } from '../store';
-import { fonts, usePalette } from '../theme';
 import { useToast } from '../Toast';
-import { Body, Button, Divider, Eyebrow, Field, Fine, H2, Header, Input, Mono, Panel, Row, Screen, Strong } from '../ui';
+import { bandFor, INSTRUMENT_ORDER, INSTRUMENTS } from '../assessments';
+import { Body, Button, Chip, Divider, Eyebrow, Field, Fine, H2, Header, Input, Mono, Panel, Row, Screen, Strong } from '../ui';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
 export default function ExportScreen() {
   const s = useStore();
-  const p = usePalette();
   const toast = useToast();
   const [name, setName] = useState(() => db.getMeta('veteranName') ?? '');
   const [busy, setBusy] = useState(false);
-  const [confirmErase, setConfirmErase] = useState(false);
+  const checkups = INSTRUMENT_ORDER.map(k => ({ kind: k, list: s.assessments.filter(a => a.kind === k) })).filter(c => c.list.length);
 
   const from = addDays(today(), -(WINDOW - 1));
   const rows = s.conditions.map(c => ({ c, st: conditionStats(s, c.id) }));
@@ -32,7 +30,7 @@ export default function ExportScreen() {
   const exportPdf = async () => {
     setBusy(true);
     try {
-      const html = buildHtml(name, from, rows, notes, flareNotes, s.conditions, daysLogged(s));
+      const html = buildHtml(name, from, rows, notes, flareNotes, s.conditions, daysLogged(s), checkups);
       const { uri } = await Print.printToFileAsync({ html });
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf', dialogTitle: 'Share symptom summary' });
@@ -47,7 +45,7 @@ export default function ExportScreen() {
   };
 
   return (
-    <Screen>
+    <Screen underHeader>
       <Header eyebrow="For your VSO or C&P exam" title="Export" />
 
       <Panel>
@@ -76,48 +74,24 @@ export default function ExportScreen() {
             </Body>
           </View>
         ))}
+        {checkups.length > 0 && (
+          <View style={{ gap: 8 }}>
+            <Eyebrow>Mental health check-ups</Eyebrow>
+            {checkups.map(({ kind, list }) => (
+              <Row key={kind} style={{ justifyContent: 'space-between' }}>
+                <Body style={{ flex: 1 }}>
+                  {INSTRUMENTS[kind].short}: {list[0].total} / {INSTRUMENTS[kind].max}
+                  {list[1] ? `  (was ${list[1].total})` : ''}
+                </Body>
+                <Chip label={bandFor(kind, list[0].total).label} tone={bandFor(kind, list[0].total).tone} />
+              </Row>
+            ))}
+          </View>
+        )}
         <Button label={busy ? 'Creating PDF…' : 'Create and share PDF'} onPress={exportPdf} />
         <Fine>The PDF is made on this phone. You choose where it goes: email, print, Files, or your VSO.</Fine>
       </Panel>
 
-      <Panel>
-        <H2>Your data</H2>
-        <Body small muted>
-          Everything in SITREP is stored only on this phone. There's no account and nothing is uploaded. If you delete the app, your data is
-          deleted with it.
-        </Body>
-        {s.isExample && (
-          <Body small>You're looking at example data. Erase it when you're ready to start your real journal.</Body>
-        )}
-        {confirmErase ? (
-          <View style={{ gap: 8 }}>
-            <Body small>This permanently deletes every check-in, flare-up, condition, date and evidence file. It can't be undone.</Body>
-            <Row style={{ gap: 8 }}>
-              <Button kind="ghost" label="Keep my data" onPress={() => setConfirmErase(false)} />
-              <Button
-                kind="danger"
-                label="Erase everything"
-                onPress={() => {
-                  try {
-                    const dir = new Directory(Paths.document, 'evidence');
-                    if (dir.exists) dir.delete();
-                  } catch {
-                    // No evidence folder yet.
-                  }
-                  s.write(() => db.eraseEverything());
-                  setName('');
-                  setConfirmErase(false);
-                  toast('All data erased');
-                }}
-              />
-            </Row>
-          </View>
-        ) : (
-          <Text onPress={() => setConfirmErase(true)} accessibilityRole="button" style={{ fontFamily: fonts.bodyMedium, fontSize: 14, color: p.flare }}>
-            Erase all data
-          </Text>
-        )}
-      </Panel>
       <Fine>SITREP is an organizer. It isn't legal or medical advice and isn't affiliated with the VA.</Fine>
     </Screen>
   );
@@ -131,6 +105,7 @@ function buildHtml(
   flares: db.Flare[],
   conditions: db.Condition[],
   logged: number,
+  checkups: { kind: db.AssessmentKind; list: db.Assessment[] }[],
 ) {
   const condName = (id: number) => conditions.find(c => c.id === id)?.name ?? '';
   const tr = rows
@@ -156,8 +131,21 @@ function buildHtml(
     <div class="head"><div class="eb">Symptom summary</div><h1>${esc(name.trim() || 'Veteran')}</h1>
     <div class="m">${fmtFull(from)} to ${fmtFull(today())} · ${logged} of ${WINDOW} days logged · Generated ${fmtFull(new Date())}</div></div>
     <table><thead><tr><th>Condition</th><th class="n">Avg severity</th><th class="n">Peak</th><th class="n">Flare-ups</th><th class="n">Avg hrs</th><th class="n">Had to lie down</th><th class="n">Limited days</th></tr></thead><tbody>${tr}</tbody></table>
+    ${checkupHtml(checkups)}
     ${flareLis ? `<h2>Flare-ups</h2><ul>${flareLis}</ul>` : ''}
     ${noteLis ? `<h2>In the veteran's words</h2><ul>${noteLis}</ul>` : ''}
     <p class="fine">Self-reported daily log kept in SITREP. Severity is rated by the veteran from 0 (none) to 10 (worst). "Limited days" are days the veteran reported symptoms limited work or daily tasks with a rating of 6 or higher for that condition.</p>
   </body></html>`;
+}
+
+function checkupHtml(checkups: { kind: db.AssessmentKind; list: db.Assessment[] }[]) {
+  if (!checkups.length) return '';
+  const rows = checkups
+    .map(({ kind, list }) => {
+      const ins = INSTRUMENTS[kind];
+      const hist = list.slice(0, 6).map(a => `${a.total} <span class="m">(${fmtMonthDay(new Date(a.takenAt))})</span>`).join(', ');
+      return `<tr><td>${esc(ins.name)}</td><td class="n">${list[0].total} / ${ins.max}</td><td>${esc(bandFor(kind, list[0].total).label)}</td><td>${hist}</td></tr>`;
+    })
+    .join('');
+  return `<h2>Mental health check-ups</h2><table><thead><tr><th>Questionnaire</th><th class="n">Latest</th><th>Range</th><th>Recent results, newest first</th></tr></thead><tbody>${rows}</tbody></table>`;
 }

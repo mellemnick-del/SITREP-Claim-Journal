@@ -31,7 +31,31 @@
       "expo-sqlite",
       "expo-font",
       "expo-document-picker",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "SITREP uses Face ID to keep your journal locked."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#3E5A28"
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "backgroundColor": "#ECEEE5",
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#12160F"
+          }
+        }
+      ]
     ]
   }
 }

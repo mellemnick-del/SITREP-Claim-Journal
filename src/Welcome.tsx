@@ -11,6 +11,7 @@ export default function Welcome() {
   const points = [
     ['Log a quick check-in each day', 'Rate each condition, sleep, and how symptoms affected your day.'],
     ['Capture flare-ups as they happen', 'How long they lasted and whether you had to stop and lie down.'],
+    ['Track your mental health', 'Standard PTSD, depression and anxiety check-ups your provider already uses.'],
     ['Keep your evidence organized', 'Track what you have, what you requested, and what you still need.'],
     ['Hand your VSO a clean summary', 'Export a PDF timeline for your VSO or C&P exam.'],
   ];

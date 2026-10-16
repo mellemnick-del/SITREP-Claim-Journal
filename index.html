@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+<title>SITREP Claim Journal</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one-column phone app (max 480px) with a fixed bottom tab bar; field-logbook feel, olive paper and stencil-condensed heads */
+:root {
+  --bg: #ECEEE5;
+  --surface: #F8F9F3;
+  --sunken: #E2E5D9;
+  --fg: #1D2219;
+  --muted: #5C6455;
+  --line: #CBD0C0;
+  --accent: #3E5A28;
+  --accent-ink: #F4F7EE;
+  --accent-soft: #DCE5CF;
+  --flare: #B0472C;
+  --flare-soft: #F2DDD5;
+  --warn: #9A6A12;
+  --warn-soft: #F1E5C8;
+  --ok: #2F6B3F;
+  --ok-soft: #D6E8D9;
+  --f-display: "Saira Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12160F; --surface: #1A1F17; --sunken: #232A1F; --fg: #E2E7D8; --muted: #9AA38F; --line: #2F3829;
+    --accent: #A3C27A; --accent-ink: #13180F; --accent-soft: #2A3820;
+    --flare: #E77F5F; --flare-soft: #3A2219; --warn: #DDB45A; --warn-soft: #362C16; --ok: #7CC48C; --ok-soft: #1D3423;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12160F; --surface: #1A1F17; --sunken: #232A1F; --fg: #E2E7D8; --muted: #9AA38F; --line: #2F3829;
+  --accent: #A3C27A; --accent-ink: #13180F; --accent-soft: #2A3820;
+  --flare: #E77F5F; --flare-soft: #3A2219; --warn: #DDB45A; --warn-soft: #362C16; --ok: #7CC48C; --ok-soft: #1D3423;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.app {
+  max-width: 480px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px calc(96px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; gap: 16px;
+}
+header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.brand { display: flex; align-items: baseline; gap: 8px; }
+.wordmark { font-family: var(--f-display); font-weight: 700; font-size: 26px; letter-spacing: 0.08em; line-height: 1; }
+.wordmark span { color: var(--accent); }
+.sub { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; background: var(--sunken); color: var(--muted); white-space: nowrap; }
+.chip.ok { background: var(--ok-soft); color: var(--ok); }
+.chip.warn { background: var(--warn-soft); color: var(--warn); }
+.chip.flare { background: var(--flare-soft); color: var(--flare); }
+.chip.accent { background: var(--accent-soft); color: var(--accent); }
+.notice { font-size: 13px; color: var(--muted); background: var(--sunken); border-radius: 8px; padding: 8px 12px; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 600; margin: 0; line-height: 1.15; text-wrap: balance; }
+h1 { font-size: 30px; }
+h2 { font-size: 21px; letter-spacing: 0.02em; }
+h3 { font-size: 18px; }
+.eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.mono { font-family: var(--f-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.stack { display: flex; flex-direction: column; gap: 8px; }
+.row { display: flex; align-items: center; gap: 12px; }
+.between { justify-content: space-between; }
+.wrap { flex-wrap: wrap; }
+.grow { flex: 1; min-width: 0; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat { background: var(--sunken); border-radius: 8px; padding: 10px; }
+.stat b { display: block; font-family: var(--f-display); font-size: 24px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--muted); }
+.deadline { display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: center; padding-block: 10px; border-top: 1px solid var(--line); }
+.deadline:first-of-type { border-top: 0; padding-top: 0; }
+.count { text-align: center; border-radius: 8px; background: var(--sunken); padding: 6px 0; }
+.count b { display: block; font-family: var(--f-display); font-size: 22px; line-height: 1; font-variant-numeric: tabular-nums; }
+.count span { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.count.soon { background: var(--warn-soft); color: var(--warn); }
+.count.soon span { color: var(--warn); }
+label { font-weight: 600; font-size: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.slider-row { display: grid; grid-template-columns: 1fr 44px; gap: 4px 12px; align-items: center; }
+.slider-row label { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 8px; }
+.slider-row .dc { font-weight: 400; color: var(--muted); }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+.sev { font-family: var(--f-display); font-size: 22px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.sev.hi { color: var(--flare); }
+input[type="text"], input[type="number"], input[type="datetime-local"], select, textarea {
+  font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; width: 100%;
+}
+textarea { min-height: 76px; resize: vertical; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.check { display: flex; gap: 10px; align-items: flex-start; font-weight: 500; }
+.check input { width: 20px; height: 20px; accent-color: var(--accent); flex: none; margin-top: 1px; }
+button { font: inherit; cursor: pointer; }
+.btn { border: 0; border-radius: 10px; padding: 12px 16px; font-weight: 600; background: var(--accent); color: var(--accent-ink); }
+.btn.ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+.btn.flare { background: var(--flare-soft); color: var(--flare); }
+.btn.full { width: 100%; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-row .btn { flex: 1; }
+.filters { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.filter { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; padding: 6px 12px; font-size: 13px; white-space: nowrap; }
+.filter[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.entry { display: grid; grid-template-columns: 4px 1fr; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+.entry:first-child { border-top: 0; padding-top: 0; }
+.entry .stripe { border-radius: 2px; background: var(--line); }
+.entry.isflare .stripe { background: var(--flare); }
+.entry p { margin: 4px 0 0; }
+.sevline { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.sevline .mono { background: var(--sunken); border-radius: 4px; padding: 1px 6px; }
+.sevline .mono.hi { background: var(--flare-soft); color: var(--flare); }
+.chart { width: 100%; height: auto; display: block; }
+.chart .bar { fill: var(--accent); }
+.chart .bar.fl { fill: var(--flare); }
+.chart .miss { fill: var(--line); }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart text { fill: var(--muted); font-family: var(--f-mono); font-size: 9px; }
+.axis { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); padding-left: 18px; }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.tip { font-size: 13px; background: var(--accent-soft); color: var(--fg); border-radius: 8px; padding: 10px 12px; }
+.tip b { color: var(--accent); }
+.ev { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+.ev:first-child { border-top: 0; padding-top: 0; }
+.ev button.chip { border: 0; cursor: pointer; }
+.doc { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 20px 16px; display: flex; flex-direction: column; gap: 14px; }
+.doc-head { border-bottom: 2px solid var(--fg); padding-bottom: 10px; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 7px 8px 7px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+td.num, th.num { text-align: right; }
+.doc ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.fine { font-size: 12px; color: var(--muted); }
+nav.tabs {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+  background: var(--surface); border-top: 1px solid var(--line);
+  padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+nav.tabs .inner { max-width: 480px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); }
+nav.tabs button { background: none; border: 0; color: var(--muted); padding: 10px 0 8px; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; letter-spacing: 0.03em; }
+nav.tabs button svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+nav.tabs button[aria-selected="true"] { color: var(--accent); }
+.toast { position: fixed; left: 50%; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 30; background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px; font-weight: 600; max-width: calc(100% - 32px); }
+@media (prefers-reduced-motion: no-preference) {
+  .toast { transition: opacity .2s; }
+  .view { animation: in .18s ease-out; }
+  @keyframes in { from { opacity: .4; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="wordmark">SIT<span>REP</span></div>
+      <div class="sub">Claim journal</div>
+    </div>
+    <span class="chip warn">Prototype</span>
+  </header>
+  <div class="notice">Example data for a made-up veteran. Anything you enter works in this session but isn't saved.</div>
+  <main id="view" class="view"></main>
+</div>
+
+<nav class="tabs" aria-label="Sections">
+  <div class="inner" role="tablist">
+    <button role="tab" data-tab="today" aria-selected="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v3M12 17v3M4 12h3M17 12h3"/></svg>Today</button>
+    <button role="tab" data-tab="log"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Log</button>
+    <button role="tab" data-tab="conditions"><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>Conditions</button>
+    <button role="tab" data-tab="evidence"><svg viewBox="0 0 24 24"><path d="M4 7h6l2 2h8v10H4z"/></svg>Evidence</button>
+    <button role="tab" data-tab="export"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Export</button>
+  </div>
+</nav>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+  const DAY = 864e5;
+  const MON = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+  const pad = n => String(n).padStart(2, "0");
+  const startOfDay = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+  const TODAY = startOfDay(new Date());
+  const addDays = (d, n) => new Date(d.getTime() + n * DAY);
+  const key = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  const fmt = (d, o) => d.toLocaleDateString("en-US", o || { weekday: "short", month: "short", day: "numeric" });
+  // Military date-time group, local time zone (J)
+  const dtg = d => pad(d.getDate()) + pad(d.getHours()) + pad(d.getMinutes()) + "J" + MON[d.getMonth()] + String(d.getFullYear()).slice(2);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  const rnd = mulberry32(11);
+  const ri = (a, b) => a + Math.floor(rnd() * (b - a + 1));
+
+  const conditions = [
+    { id: "tin", short: "TIN", name: "Tinnitus", dc: "6260", status: "Filed", tip: "Note when the ringing makes it hard to sleep, focus or follow a conversation. Examiners ask how it affects daily life." },
+    { id: "back", short: "BACK", name: "Lower back strain", dc: "5237", status: "Filed", tip: "Log flare-ups with how long they last and what you couldn't do, like bending, lifting or sitting through a shift." },
+    { id: "mig", short: "MIG", name: "Migraines", dc: "8100", status: "Filed", tip: "For each attack, note whether you had to stop and lie down. How often that happens is a key question for migraines." },
+    { id: "knee", short: "KNEE", name: "Right knee", dc: "5260", status: "Planned", tip: "Track stairs, kneeling and instability. Note any days you used a brace or cane." }
+  ];
+  const condById = Object.fromEntries(conditions.map(c => [c.id, c]));
+
+  // ---- Example data: last 30 days ----
+  const entries = {}; // key -> { date, sev:{}, sleep, limited, note, at }
+  const flares = [];  // { id, cond, start, hours, prostrating, note }
+  const migDays = new Set([27, 22, 16, 9, 4]);
+  const backDays = new Set([19, 6]);
+  const notes = {
+    27: "Migraine hit at work around 1400. Left early and lay down in a dark room.",
+    22: "Bad sleep. Ringing louder than usual at night.",
+    19: "Back locked up loading the truck. Couldn't finish yard work.",
+    16: "Migraine with light sensitivity. Missed my kid's practice.",
+    12: "Knee gave out on the stairs at the stadium.",
+    9: "Migraine in the morning. Took meds, lay down 3 hours.",
+    6: "Back flare. Took the day off, mostly on the floor with ice.",
+    4: "Migraine. Pushed through work but had to sit in the car at lunch.",
+    2: "Tinnitus loud after a meeting in a noisy room."
+  };
+  let flareSeq = 1;
+  for (let i = 29; i >= 1; i--) {
+    const d = addDays(TODAY, -i);
+    if (rnd() < 0.12 && !migDays.has(i) && !backDays.has(i) && !notes[i]) continue; // a few missed days
+    const isMig = migDays.has(i), isBack = backDays.has(i);
+    const sev = {
+      tin: ri(3, 5) + (i === 22 || i === 2 ? 2 : 0),
+      back: isBack ? ri(7, 8) : ri(2, 5),
+      mig: isMig ? ri(7, 9) : ri(0, 2),
+      knee: i === 12 ? 7 : ri(2, 4)
+    };
+    const at = new Date(d); at.setHours(ri(20, 22), ri(0, 59));
+    entries[key(d)] = { date: d, sev, sleep: i === 22 ? 4 : ri(5, 7), limited: isMig || isBack || i === 12, note: notes[i] || "", at };
+    if (isMig) { const s = new Date(d); s.setHours(ri(8, 14), ri(0, 59)); flares.push({ id: flareSeq++, cond: "mig", start: s, hours: ri(3, 9), prostrating: i !== 4, note: notes[i] }); }
+    if (isBack) { const s = new Date(d); s.setHours(ri(7, 16), ri(0, 59)); flares.push({ id: flareSeq++, cond: "back", start: s, hours: ri(18, 36), prostrating: false, note: notes[i] }); }
+  }
+
+  const deadlines = [
+    { title: "VSO appointment", detail: "Review evidence list and personal statement", date: addDays(TODAY, 6) },
+    { title: "C&P exam: migraines and back", detail: "VA clinic, Conroe. Bring your symptom summary.", date: addDays(TODAY, 21) },
+    { title: "Intent to File expires", detail: "Submit the full claim before this date to keep your effective date", date: addDays(TODAY, 137) }
+  ];
+
+  let evSeq = 1;
+  const evidence = [
+    { title: "Service treatment records", type: "Military records", cond: "all", status: "Requested" },
+    { title: "Separation exam audiogram", type: "Military records", cond: "tin", status: "Have" },
+    { title: "Lumbar MRI report", type: "Private medical", cond: "back", status: "Have" },
+    { title: "Buddy statement from squad member (VA Form 21-10210)", type: "Lay statement", cond: "back", status: "Need" },
+    { title: "Neurologist visit notes", type: "Private medical", cond: "mig", status: "Requested" },
+    { title: "Personal statement (VA Form 21-4138)", type: "Lay statement", cond: "all", status: "Need" },
+    { title: "Knee brace prescription", type: "Private medical", cond: "knee", status: "Have" }
+  ].map(e => Object.assign({ id: evSeq++ }, e));
+  const STATUS_ORDER = ["Need", "Requested", "Have"];
+  const statusClass = s => s === "Have" ? "ok" : s === "Requested" ? "warn" : "flare";
+
+  // ---- UI state ----
+  let tab = "today";
+  let logFilter = "all";
+  let showFlareForm = false;
+  const draft = { sev: { tin: 4, back: 3, mig: 1, knee: 3 }, sleep: 6, limited: false, note: "" };
+
+  const view = document.getElementById("view");
+  const toastEl = document.getElementById("toast");
+  let toastTimer;
+  function toast(msg) {
+    toastEl.textContent = msg; toastEl.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { toastEl.hidden = true; }, 2200);
+  }
+
+  function last30() { const out = []; for (let i = 29; i >= 0; i--) out.push(addDays(TODAY, -i)); return out; }
+  function flaresFor(id) { return flares.filter(f => f.cond === id && f.start >= addDays(TODAY, -29)); }
+  function daysLogged() { return last30().filter(d => entries[key(d)]).length; }
+  function streak() { let n = 0, d = entries[key(TODAY)] ? TODAY : addDays(TODAY, -1); while (entries[key(d)]) { n++; d = addDays(d, -1); } return n; }
+  function condStats(id) {
+    const vals = last30().map(d => entries[key(d)]).filter(Boolean).map(e => e.sev[id]);
+    const fl = flaresFor(id);
+    const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+    return {
+      avg, peak: vals.length ? Math.max(...vals) : 0, logged: vals.length, flares: fl.length,
+      avgHours: fl.length ? fl.reduce((a, f) => a + f.hours, 0) / fl.length : 0,
+      prostrating: fl.filter(f => f.prostrating).length,
+      limitedDays: last30().filter(d => { const e = entries[key(d)]; return e && e.limited && e.sev[id] >= 6; }).length
+    };
+  }
+  const daysUntil = d => Math.round((startOfDay(d) - TODAY) / DAY);
+
+  // ---- Views ----
+  function renderToday() {
+    const done = entries[key(TODAY)];
+    const fl30 = flares.filter(f => f.start >= addDays(TODAY, -29)).length;
+    const sliders = conditions.map(c => {
+      const v = draft.sev[c.id];
+      return `<div class="slider-row">
+        <label for="sev-${c.id}"><span>${esc(c.name)}</span><span class="dc mono">DC ${c.dc}</span></label>
+        <input type="range" id="sev-${c.id}" min="0" max="10" step="1" value="${v}" data-sev="${c.id}" aria-describedby="sevv-${c.id}">
+        <div class="sev ${v >= 7 ? "hi" : ""}" id="sevv-${c.id}">${v}</div>
+      </div>`;
+    }).join("");
+    const flareForm = showFlareForm ? `
+      <section class="panel" aria-labelledby="ff-h">
+        <div class="row between"><h2 id="ff-h">Log a flare-up</h2><span class="chip flare">Flare-up</span></div>
+        <div class="field"><label for="ff-cond">Condition</label>
+          <select id="ff-cond">${conditions.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select></div>
+        <div class="field"><label for="ff-start">Started</label>
+          <input type="datetime-local" id="ff-start" value="${key(TODAY)}T${pad(new Date().getHours())}:${pad(new Date().getMinutes())}"></div>
+        <div class="field"><label for="ff-hours">How long did it last? (hours)</label>
+          <input type="number" id="ff-hours" min="0" step="0.5" value="4" inputmode="decimal"></div>
+        <label class="check"><input type="checkbox" id="ff-pros"><span>I had to stop what I was doing and lie down</span></label>
+        <div class="field"><label for="ff-note">What did it stop you from doing?</label>
+          <textarea id="ff-note" placeholder="Example: Left work at 1300, couldn't drive, lay down in a dark room"></textarea></div>
+        <div class="btn-row"><button class="btn ghost" data-act="cancel-flare">Cancel</button><button class="btn" data-act="save-flare">Save flare-up</button></div>
+      </section>` : "";
+
+    view.innerHTML = `
+      <section class="stack">
+        <div class="eyebrow">${fmt(TODAY, { weekday: "long", month: "long", day: "numeric" })}</div>
+        <h1>${done ? "You're logged for today" : "Today's check-in"}</h1>
+      </section>
+      <div class="stats">
+        <div class="stat"><b>${streak()}</b><span>day streak</span></div>
+        <div class="stat"><b>${daysLogged()}/30</b><span>days logged</span></div>
+        <div class="stat"><b>${fl30}</b><span>flare-ups, 30 days</span></div>
+      </div>
+      <section class="panel" aria-labelledby="dl-h">
+        <div class="row between"><h2 id="dl-h">Coming up</h2></div>
+        <div>${deadlines.map(d => {
+          const n = daysUntil(d.date);
+          return `<div class="deadline"><div class="count ${n <= 14 ? "soon" : ""}"><b>${n}</b><span>days</span></div>
+            <div class="grow"><div><strong>${esc(d.title)}</strong></div><div class="muted" style="font-size:13px">${esc(d.detail)}</div><div class="mono muted">${fmt(d.date, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}</div></div></div>`;
+        }).join("")}</div>
+      </section>
+      ${flareForm}
+      <section class="panel" aria-labelledby="ci-h">
+        <div class="row between"><h2 id="ci-h">${done ? "Update today's check-in" : "How was today?"}</h2>${done ? `<span class="chip ok">Logged ${pad(done.at.getHours())}${pad(done.at.getMinutes())}</span>` : ""}</div>
+        <div class="fine">Rate each condition from 0 (none) to 10 (worst). Takes about a minute.</div>
+        ${sliders}
+        <div class="field"><label for="sleep">Hours of sleep last night</label>
+          <input type="number" id="sleep" min="0" max="14" step="0.5" value="${draft.sleep}" inputmode="decimal"></div>
+        <label class="check"><input type="checkbox" id="limited" ${draft.limited ? "checked" : ""}><span>Symptoms limited my work or daily tasks today</span></label>
+        <div class="field"><label for="note">What happened? (optional)</label>
+          <textarea id="note" placeholder="Example: Had to leave the grocery store, back wouldn't let me stand in line">${esc(draft.note)}</textarea></div>
+        <div class="btn-row">
+          ${showFlareForm ? "" : `<button class="btn flare" data-act="open-flare">Log flare-up</button>`}
+          <button class="btn" data-act="save-checkin">${done ? "Update check-in" : "Save check-in"}</button>
+        </div>
+      </section>
+      <p class="fine">SITREP is an organizer. It isn't legal or medical advice and isn't affiliated with the VA. Talk with an accredited VSO about your claim.</p>`;
+  }
+
+  function renderLog() {
+    const items = [];
+    last30().reverse().forEach(d => {
+      const e = entries[key(d)];
+      if (e) items.push({ kind: "entry", t: e.at, e });
+    });
+    flares.forEach(f => items.push({ kind: "flare", t: f.start, f }));
+    items.sort((a, b) => b.t - a.t);
+    const shown = items.filter(it => logFilter === "all" ? true : logFilter === "flares" ? it.kind === "flare" : it.kind === "flare" ? it.f.cond === logFilter : it.e.sev[logFilter] >= 6 || it.e.note);
+    const filters = [["all", "All"], ["flares", "Flare-ups"], ...conditions.map(c => [c.id, c.name])];
+    view.innerHTML = `
+      <section class="stack"><div class="eyebrow">Last 30 days</div><h1>Log</h1></section>
+      <div class="filters" role="group" aria-label="Filter log">${filters.map(([id, l]) => `<button class="filter" data-filter="${id}" aria-pressed="${logFilter === id}">${esc(l)}</button>`).join("")}</div>
+      <section class="panel"><div>${shown.length ? shown.map(it => {
+        if (it.kind === "flare") {
+          const f = it.f, c = condById[f.cond];
+          return `<div class="entry isflare"><div class="stripe"></div><div>
+            <div class="row between wrap"><strong>${esc(c.name)} flare-up</strong><span class="mono muted">${dtg(f.start)}</span></div>
+            <div class="sevline"><span class="chip flare">${f.hours} hrs</span>${f.prostrating ? `<span class="chip flare">Had to lie down</span>` : ""}</div>
+            ${f.note ? `<p>${esc(f.note)}</p>` : ""}</div></div>`;
+        }
+        const e = it.e;
+        return `<div class="entry"><div class="stripe"></div><div>
+          <div class="row between wrap"><strong>${fmt(e.date)} check-in</strong><span class="mono muted">${dtg(e.at)}</span></div>
+          <div class="sevline">${conditions.map(c => `<span class="mono ${e.sev[c.id] >= 7 ? "hi" : ""}">${c.short} ${e.sev[c.id]}</span>`).join("")}<span class="mono">SLEEP ${e.sleep}h</span>${e.limited ? `<span class="chip warn">Limited daily tasks</span>` : ""}</div>
+          ${e.note ? `<p>${esc(e.note)}</p>` : ""}</div></div>`;
+      }).join("") : `<p class="muted">Nothing logged for this filter yet.</p>`}</div></section>`;
+  }
+
+  function chart(id) {
+    const days = last30();
+    const flareDays = new Set(flaresFor(id).map(f => key(startOfDay(f.start))));
+    const W = 320, H = 80, L = 18, bw = (W - L) / 30;
+    let s = `<svg class="chart" viewBox="0 0 ${W} ${H + 4}" role="img" aria-label="Daily severity for the last 30 days">`;
+    [10, 5].forEach(v => { const y = 4 + H - v / 10 * H; s += `<line class="grid" x1="${L}" x2="${W}" y1="${y}" y2="${y}"/><text x="0" y="${y + 3}">${v}</text>`; });
+    days.forEach((d, i) => {
+      const e = entries[key(d)], x = L + i * bw + 1;
+      if (!e) { s += `<rect class="miss" x="${x}" y="${H + 1}" width="${bw - 2}" height="2"/>`; return; }
+      const v = e.sev[id], h = Math.max(2, v / 10 * H);
+      s += `<rect class="bar ${flareDays.has(key(d)) ? "fl" : ""}" x="${x}" y="${4 + H - h}" width="${bw - 2}" height="${h}" rx="1"/>`;
+    });
+    return s + "</svg>";
+  }
+
+  function renderConditions() {
+    view.innerHTML = `
+      <section class="stack"><div class="eyebrow">${conditions.length} conditions tracked</div><h1>Conditions</h1></section>
+      <div class="legend"><span><i style="background:var(--accent)"></i>Daily severity</span><span><i style="background:var(--flare)"></i>Flare-up day</span><span><i style="background:var(--line)"></i>Not logged</span></div>
+      ${conditions.map(c => {
+        const st = condStats(c.id);
+        const ev = evidence.filter(e => e.cond === c.id || e.cond === "all");
+        const have = ev.filter(e => e.status === "Have").length;
+        return `<section class="panel" aria-labelledby="c-${c.id}">
+          <div class="row between"><div><h2 id="c-${c.id}">${esc(c.name)}</h2><div class="mono muted">DC ${c.dc}</div></div>
+            <span class="chip ${c.status === "Filed" ? "accent" : ""}">${c.status}</span></div>
+          <div>${chart(c.id)}<div class="axis"><span>30 days ago</span><span>Today</span></div></div>
+          <div class="stats">
+            <div class="stat"><b>${st.avg.toFixed(1)}</b><span>avg severity</span></div>
+            <div class="stat"><b>${st.flares}</b><span>flare-ups${st.flares ? `, avg ${Math.round(st.avgHours)} hrs` : ""}</span></div>
+            <div class="stat"><b>${have}/${ev.length}</b><span>evidence ready</span></div>
+          </div>
+          ${c.id === "mig" ? `<div class="row between"><span>Attacks where you had to lie down</span><span class="chip flare">${st.prostrating} in 30 days</span></div>` : ""}
+          <div class="tip"><b>What to track: </b>${esc(c.tip)}</div>
+        </section>`;
+      }).join("")}
+      <p class="fine">Diagnostic codes are shown for reference. Confirm yours with your VSO or your rating decision.</p>`;
+  }
+
+  function renderEvidence() {
+    const groups = [["all", "Applies to every condition"], ...conditions.map(c => [c.id, c.name])];
+    const counts = STATUS_ORDER.map(s => [s, evidence.filter(e => e.status === s).length]);
+    view.innerHTML = `
+      <section class="stack"><div class="eyebrow">Evidence locker</div><h1>Evidence</h1></section>
+      <div class="stats">${counts.map(([s, n]) => `<div class="stat"><b>${n}</b><span>${s === "Have" ? "in hand" : s === "Requested" ? "requested" : "still needed"}</span></div>`).join("")}</div>
+      <div class="fine">Tap a status to move it along: Need, then Requested, then Have.</div>
+      ${groups.map(([gid, gname]) => {
+        const items = evidence.filter(e => e.cond === gid);
+        if (!items.length) return "";
+        return `<section class="panel"><h2>${esc(gname)}</h2><div>${items.map(e => `
+          <div class="ev"><div class="grow"><div><strong>${esc(e.title)}</strong></div><div class="muted" style="font-size:13px">${esc(e.type)}${e.file ? ` · <span class="mono">${esc(e.file)}</span>` : ""}</div></div>
+          <button class="chip ${statusClass(e.status)}" data-ev="${e.id}" aria-label="Status: ${e.status}. Tap to change.">${e.status}</button></div>`).join("")}</div></section>`;
+      }).join("")}
+      <section class="panel" aria-labelledby="add-h">
+        <h2 id="add-h">Add evidence</h2>
+        <div class="field"><label for="ev-title">What is it?</label><input type="text" id="ev-title" placeholder="Example: Urgent care visit for back, March 2026"></div>
+        <div class="field"><label for="ev-cond">Condition</label><select id="ev-cond"><option value="all">All conditions</option>${conditions.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select></div>
+        <div class="field"><label for="ev-type">Type</label><select id="ev-type"><option>Private medical</option><option>Military records</option><option>Lay statement</option><option>Photo</option><option>Other</option></select></div>
+        <div class="field"><label for="ev-file">Attach a file (optional)</label><input type="file" id="ev-file"></div>
+        <button class="btn full" data-act="add-ev">Add to locker</button>
+      </section>`;
+  }
+
+  function summaryRows() {
+    return conditions.map(c => ({ c, st: condStats(c.id) }));
+  }
+  function renderExport() {
+    const from = addDays(TODAY, -29);
+    const rows = summaryRows();
+    const notable = last30().map(d => entries[key(d)]).filter(e => e && e.note).slice(-6).reverse();
+    view.innerHTML = `
+      <section class="stack"><div class="eyebrow">For your VSO or C&amp;P exam</div><h1>Export</h1></section>
+      <div class="fine">This is a preview. In the finished app, this becomes a PDF you can print or email.</div>
+      <article class="doc" aria-label="Symptom summary preview">
+        <div class="doc-head">
+          <div class="eyebrow">Symptom summary</div>
+          <h2>Veteran: J. Example</h2>
+          <div class="mono muted">${fmt(from, { month: "short", day: "numeric", year: "numeric" })} to ${fmt(TODAY, { month: "short", day: "numeric", year: "numeric" })} · ${daysLogged()} of 30 days logged</div>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Condition</th><th class="num">Avg</th><th class="num">Peak</th><th class="num">Flare-ups</th><th class="num">Avg hrs</th><th class="num">Limited days</th></tr></thead>
+          <tbody>${rows.map(({ c, st }) => `<tr><td>${esc(c.name)} <span class="mono muted">${c.dc}</span></td><td class="num">${st.avg.toFixed(1)}</td><td class="num">${st.peak}</td><td class="num">${st.flares}</td><td class="num">${st.flares ? Math.round(st.avgHours) : "-"}</td><td class="num">${st.limitedDays}</td></tr>`).join("")}</tbody>
+        </table></div>
+        <div class="stack"><h3>Migraine attacks</h3>
+          <div style="font-size:14px">${condStats("mig").flares} attacks in 30 days. ${condStats("mig").prostrating} required stopping activity and lying down.</div></div>
+        <div class="stack"><h3>In the veteran's words</h3>
+          <ul>${notable.map(e => `<li><span class="mono muted">${fmt(e.date, { month: "short", day: "numeric" })}</span> ${esc(e.note)}</li>`).join("")}</ul></div>
+        <p class="fine">Self-reported daily log kept in SITREP. Severity is rated by the veteran from 0 to 10.</p>
+      </article>
+      <button class="btn full" data-act="copy">Copy summary as text</button>
+      <textarea id="copy-fallback" hidden readonly></textarea>`;
+  }
+
+  function summaryText() {
+    const lines = ["SYMPTOM SUMMARY (last 30 days, " + daysLogged() + " of 30 days logged)", ""];
+    summaryRows().forEach(({ c, st }) => lines.push(`${c.name} (DC ${c.dc}): avg ${st.avg.toFixed(1)}/10, peak ${st.peak}, ${st.flares} flare-ups${st.flares ? `, avg ${Math.round(st.avgHours)} hrs` : ""}, ${st.limitedDays} limited days`));
+    const m = condStats("mig");
+    lines.push("", `Migraines: ${m.flares} attacks, ${m.prostrating} required lying down.`);
+    return lines.join("\n");
+  }
+
+  const renderers = { today: renderToday, log: renderLog, conditions: renderConditions, evidence: renderEvidence, export: renderExport };
+  function render() {
+    renderers[tab]();
+    document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === tab));
+    view.classList.remove("view"); void view.offsetWidth; view.classList.add("view");
+  }
+
+  // ---- Events ----
+  document.querySelector("nav.tabs").addEventListener("click", e => {
+    const b = e.target.closest("button[data-tab]"); if (!b) return;
+    tab = b.dataset.tab; render(); window.scrollTo(0, 0);
+  });
+
+  view.addEventListener("input", e => {
+    const t = e.target;
+    if (t.dataset.sev) {
+      draft.sev[t.dataset.sev] = +t.value;
+      const out = document.getElementById("sevv-" + t.dataset.sev);
+      out.textContent = t.value; out.classList.toggle("hi", +t.value >= 7);
+    }
+    if (t.id === "sleep") draft.sleep = +t.value;
+    if (t.id === "note") draft.note = t.value;
+  });
+  view.addEventListener("change", e => { if (e.target.id === "limited") draft.limited = e.target.checked; });
+
+  view.addEventListener("click", e => {
+    const f = e.target.closest("[data-filter]");
+    if (f) { logFilter = f.dataset.filter; render(); return; }
+    const ev = e.target.closest("[data-ev]");
+    if (ev) {
+      const item = evidence.find(x => x.id === +ev.dataset.ev);
+      item.status = STATUS_ORDER[(STATUS_ORDER.indexOf(item.status) + 1) % STATUS_ORDER.length];
+      render(); toast(`Marked "${item.title.split(" (")[0]}" as ${item.status}`); return;
+    }
+    const a = e.target.closest("[data-act]"); if (!a) return;
+    const act = a.dataset.act;
+    if (act === "save-checkin") {
+      const updating = !!entries[key(TODAY)];
+      entries[key(TODAY)] = { date: TODAY, sev: Object.assign({}, draft.sev), sleep: draft.sleep, limited: draft.limited, note: draft.note.trim(), at: new Date() };
+      render(); toast(updating ? "Check-in updated" : "Check-in saved");
+    } else if (act === "open-flare") { showFlareForm = true; render(); document.getElementById("ff-cond").focus(); }
+    else if (act === "cancel-flare") { showFlareForm = false; render(); }
+    else if (act === "save-flare") {
+      const start = new Date(document.getElementById("ff-start").value);
+      const hours = parseFloat(document.getElementById("ff-hours").value);
+      if (isNaN(start) || isNaN(hours)) { toast("Enter a start time and how many hours it lasted"); return; }
+      const cond = document.getElementById("ff-cond").value;
+      flares.push({ id: flareSeq++, cond, start, hours, prostrating: document.getElementById("ff-pros").checked, note: document.getElementById("ff-note").value.trim() });
+      showFlareForm = false; render(); toast(condById[cond].name + " flare-up saved");
+    } else if (act === "add-ev") {
+      const title = document.getElementById("ev-title").value.trim();
+      if (!title) { toast("Give the evidence a name first"); document.getElementById("ev-title").focus(); return; }
+      const file = document.getElementById("ev-file").files[0];
+      evidence.push({ id: evSeq++, title, type: document.getElementById("ev-type").value, cond: document.getElementById("ev-cond").value, status: file ? "Have" : "Need", file: file ? file.name : "" });
+      render(); toast("Added to your evidence locker");
+    } else if (act === "copy") {
+      const text = summaryText();
+      const fallback = () => { const ta = document.getElementById("copy-fallback"); ta.hidden = false; ta.value = text; ta.style.minHeight = "180px"; ta.select(); toast("Text selected. Copy it from the box below."); };
+      try { navigator.clipboard.writeText(text).then(() => toast("Summary copied"), fallback); } catch (err) { fallback(); }
+    }
+  });
+
+  const startTab = (location.hash || "").slice(1);
+  if (renderers[startTab]) tab = startTab;
+  render();
+})();
+</script>
+</body>
+</html>
